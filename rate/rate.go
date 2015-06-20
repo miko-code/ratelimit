@@ -31,12 +31,12 @@ func (h rateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Password: "",
+		DB:       0,
 	})
 	defer client.Close()
 
-	//in a real world case ill will probly  use r to ger user data like app engine
+	//in a real world case ill will probly  use r to get user data like app engine for exemple.
 	u := &userMD{}
 	u.meta = []string{"aaaa", "10.10.110.5"}
 
@@ -44,31 +44,13 @@ func (h rateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if b == false {
 		w.WriteHeader(403)
-		w.Write([]byte("DONT abouse"))
+		w.Write([]byte("DONT abuse the server"))
 	} else {
 		h.handler.ServeHTTP(w, r)
 
 	}
 
 }
-
-/*
-func (u *userMD) checkUserMD(client *redis.Client, r *http.Request) bool {
-	//in a real world case ill will probly  use r to ger user data like app engine
-	u.meta = []string{"miki", "10.10.10.5"}
-	for _, e := range u.meta {
-		ex, err := client.Exists(e).Result()
-		if err != nil {
-			log.Printf("client.Exists err   #%v ", err)
-		}
-		if ex {
-			log.Printf("key inside the blacklist  therfor blocked")
-			return false
-		}
-	}
-	return true
-}
-*/
 
 func checkRateOrBlock(client *redis.Client, remotAdd string, meta []string) bool {
 
@@ -94,7 +76,7 @@ func checkRateOrBlock(client *redis.Client, remotAdd string, meta []string) bool
 	if err != nil {
 		log.Printf("client.Exists err   #%v ", err)
 	}
-
+	//if key exsit increment and check if over the limit.
 	if ex {
 
 		i := client.Incr(key)
@@ -106,7 +88,7 @@ func checkRateOrBlock(client *redis.Client, remotAdd string, meta []string) bool
 
 			return false
 		}
-	} else {
+	} else { //key doesn't exsit insert it to redis
 		log.Printf("set new key")
 		_ = client.Set(key, "1", time.Minute*time.Duration(c.Time))
 		return true
@@ -116,6 +98,7 @@ func checkRateOrBlock(client *redis.Client, remotAdd string, meta []string) bool
 
 }
 
+//get the value from the yaml file
 func (c *conf) getConf() *conf {
 
 	yamlFile, err := ioutil.ReadFile("./conf.yaml")
