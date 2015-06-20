@@ -14,60 +14,59 @@ import (
 type rateHandler struct {
 	handler http.Handler
 }
-
-func NewRateHandler(handler http.Handler) *rateHandler {
-	return &rateHandler{handler: handler}
-}
-
 type conf struct {
-	hits int64 `yaml:"hits"`
-	time int64 `yaml:"time"`
+	Hits int64 `yaml:"hits"`
+	Time int64 `yaml:"time"`
 }
 
-func (s *rateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func RateHandler(h http.Handler) http.Handler {
+	return rateHandler{h}
+}
 
+func (h rateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b := checkRate(r.RemoteAddr)
 	if b == false {
-		log.Printf("in the false   #%v ")
-		w.WriteHeader(200)
+		log.Printf("in the false  ")
+		h.handler.ServeHTTP(w, r)
 	}
+
 }
 
 func checkRate(remotAdd string) bool {
 
-	//shold i generate  new clinte?
 	client := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+	defer client.Close()
 
-	c := &conf{5, 5}
-	//	c = c.getConf()
-	log.Printf("ccccccccccc   #%v ", c.hits)
+	c := &conf{}
+	c = c.getConf()
 
 	key := remotAdd + "_" + strconv.FormatInt(time.Now().Unix(), 10)
 
-	currnet, err := client.Get(key).Result()
+	//if exsit
+	ex, err := client.Exists(key).Result()
 	if err != nil {
 		log.Printf("client.Get err   #%v ", err)
 	}
 
-	if currnet == "" {
-		//		log.Printf("in the if   #%v ")
-		_ = client.Set(key, "1", time.Minute*10)
-		//		log.Printf("in the if   #%v ", b)
-		return false
-	}
+	if ex {
 
-	i := client.Incr(key)
-	log.Printf("in the else   #%v ", i)
-	_ = client.Expire(key, time.Minute*10)
+		i := client.Incr(key)
+		log.Printf("in the else   #%v ", i)
+		_ = client.Expire(key, time.Millisecond*time.Duration(c.Time))
 
-	if i.Val() > c.hits {
-		log.Printf("out bbbbbbbbbbbbbbbbbbbbbbbbbbb")
+		if i.Val() > c.Hits {
+			log.Printf("out bbbbbbbbbbbbbbbbbbbbbbbbbbb")
 
-		return false
+			return false
+		}
+	} else {
+		log.Printf("setttttt")
+		_ = client.Set(key, "1", time.Minute*time.Duration(c.Time))
+		return true
 	}
 
 	return true
@@ -76,7 +75,7 @@ func checkRate(remotAdd string) bool {
 
 func (c *conf) getConf() *conf {
 
-	yamlFile, err := ioutil.ReadFile("conf.yaml")
+	yamlFile, err := ioutil.ReadFile("./conf.yaml")
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)
 	}
