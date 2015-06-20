@@ -75,6 +75,7 @@ func checkRateOrBlock(client *redis.Client, remotAdd string, meta []string) bool
 	c := &conf{}
 	c = c.getConf()
 
+	//Limit by parameters
 	for _, e := range meta {
 		ex, err := client.Exists(e).Result()
 		if err != nil {

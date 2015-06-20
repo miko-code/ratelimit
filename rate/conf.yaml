@@ -1,2 +1,4 @@
+#number of request
 hits: 1
+#time in milisec
 time: 5000000
